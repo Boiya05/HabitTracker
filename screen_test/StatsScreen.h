@@ -4,5 +4,6 @@
 void drawStatsScreen();
 void statsMoveDay(int direction);
 void drawThickRect(int x, int y, int w, int h, uint16_t color, int thickness);
-
+int getSelectedDay();
+void drawDayDetailScreen(int day);
 #endif

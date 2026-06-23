@@ -10,7 +10,8 @@
 enum Screen {
   MAIN_MENU,
   HABIT_TRACKER,
-  STATS
+  STATS,
+  DAY_DETAIL
 };
 
 Screen currentScreen = MAIN_MENU;
@@ -113,7 +114,19 @@ void loop() {
     if (move != 0) {
         statsMoveDay(move);
       }
+      
+    if (isActionPressed()) {
+      currentScreen = DAY_DETAIL;
+      drawDayDetailScreen(getSelectedDay());
+    }
 
     break;
+
+    case DAY_DETAIL:
+      if (isBackPressed()) {
+        currentScreen = STATS;
+        drawStatsScreen();
+  }
+  break;
   }
 }
