@@ -5,10 +5,11 @@
 #include "Input.h"
 #include "Display.h"
 #include "HabitTrackerScreen.h"
+#include "StatsScreen.h"
 
 enum Screen {
   MAIN_MENU,
-  HABIT_TRACKER
+  HABIT_TRACKER,
   STATS
 };
 
@@ -71,6 +72,7 @@ void loop() {
 
           case 2:
             currentScreen = STATS;
+            drawStatsScreen();
             break;
 
           case 3:
@@ -102,5 +104,16 @@ void loop() {
       }
 
       break;
+
+      case STATS:
+    if (isBackPressed()) {
+      currentScreen = MAIN_MENU;
+      drawMainMenu(selectedItem, menuItems, menuCount);
+    }
+    if (move != 0) {
+        statsMoveDay(move);
+      }
+
+    break;
   }
 }

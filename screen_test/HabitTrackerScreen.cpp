@@ -30,7 +30,6 @@ int selectedHabit = 0;
 void drawHabitTracker() {
   tft.fillScreen(ST77XX_BLACK);
 
-  // Title/date
   tft.setTextSize(2);
   tft.setTextColor(ST77XX_CYAN);
   tft.setCursor(15, 15);
@@ -38,7 +37,6 @@ void drawHabitTracker() {
 
   tft.drawLine(0, 45, 320, 45, ST77XX_WHITE);
 
-  // Habit list
   tft.setTextSize(2);
 
   for (int i = 0; i < HABIT_COUNT; i++) {
@@ -46,16 +44,25 @@ void drawHabitTracker() {
 
     if (i == selectedHabit) {
       tft.fillRect(10, y - 6, 300, 28, ST77XX_BLUE);
-      tft.setTextColor(ST77XX_WHITE);
-    } else {
-      tft.setTextColor(ST77XX_WHITE);
     }
 
-  if (selectedHabit >= HABIT_COUNT) {
-    selectedHabit = 0;
-  }
+    tft.setTextColor(ST77XX_WHITE);
+    tft.setCursor(25, y);
 
-  drawHabitTracker();
+    if (i == selectedHabit) {
+      tft.print("> ");
+    } else {
+      tft.print("  ");
+    }
+
+    if (habitDone[i]) {
+      tft.print("[x] ");
+    } else {
+      tft.print("[ ] ");
+    }
+
+    tft.println(habits[i]);
+  }
 }
 
 void habitTrackerToggle() {
@@ -74,4 +81,18 @@ void setupHabitStorage() {
     String key = "h" + String(i);
     habitDone[i] = prefs.getBool(key.c_str(), false);
   }
+}
+
+void habitTrackerMove(int direction) {
+  selectedHabit += direction;
+
+  if (selectedHabit < 0) {
+    selectedHabit = HABIT_COUNT - 1;
+  }
+
+  if (selectedHabit >= HABIT_COUNT) {
+    selectedHabit = 0;
+  }
+
+  drawHabitTracker();
 }
