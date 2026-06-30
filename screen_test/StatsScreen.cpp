@@ -1,125 +1,206 @@
 #include <Arduino.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_ST7789.h>
-#include "StatsScreen.h"
+#include <Preferences.h>
 
+#include "StatsScreen.h"
+#include "Config.h"
+#include "TimeManager.h"
+
+extern Preferences prefs;
 extern Adafruit_ST7789 tft;
 
-String month = "June";
-String year = "2026";//update later to real time
-
 int selectedDay = 1;
-const char* weekdays[] = {
-  "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"
+
+// Month being viewed in stats
+int viewedYear;
+int viewedMonth;
+String viewedMonthName;
+
+// Calendar UI layout
+int startX = 25;
+int startY = 75;
+int squareSize = 18;
+int xspacing = 35;
+int yspacing = 30;
+
+const char* statWeekdays[] = {
+  "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"
 };
 
-
-void drawStatsScreen() {
-  tft.fillScreen(ST77XX_BLACK);
-
-  // Title/date
-  tft.setTextSize(2);
-  tft.setTextColor(ST77XX_CYAN);
-  tft.setCursor(15, 15);
-  tft.println(month + " " + year);
-  
-  // Day
-  tft.setTextSize(1);
-  tft.setTextColor(ST77XX_CYAN);
-  tft.setCursor(20, 55);
-  tft.println("Mon  Tue  Wed  Thu  Fri  Sat  Sun");
-
-
-  // Calendar UI
-  for(int day = 1; day<=30; day++){
-    int startX = 25;
-    int startY = 75;
-    int squareSize = 18;
-    int xspacing = 35;
-    int yspacing = 30;
-    int col = (day - 1) % 7;
-    int row = (day - 1) / 7;
-    int x = startX + col * xspacing;
-    int y = startY + row * yspacing;
-    tft.fillRect(x,y, squareSize, squareSize, ST77XX_WHITE);
-
-    if (day ==  selectedDay){
-      int weekdayIndex = (selectedDay - 1) % 7;
-      drawThickRect(x-2, y-2, squareSize+2, squareSize+2, ST77XX_GREEN,3);
-      tft.setTextSize(1);
-    tft.setTextColor(ST77XX_WHITE);
-    tft.setCursor(230, 15);
-    tft.println(weekdays[weekdayIndex]);
-    tft.setCursor(230, 30);
-    tft.print(selectedDay);
-    tft.print("-");
-    tft.println(month);
-    }
-  }
-
-}
-
-void drawThickRect(int x, int y, int w, int h, uint16_t color, int thickness) {
-  for (int i = 0; i < thickness; i++) {
-    tft.drawRect(x + i, y + i, w - 2*i, h - 2*i, color);
-  }
+String makeHabitKeyForDate(int year, int month, int day, int habitIndex) {
+  return String(year) + "-" +
+         String(month) + "-" +
+         String(day) + "-h" +
+         String(habitIndex);
 }
 
 int getSelectedDay() {
   return selectedDay;
 }
 
-void statsMoveDay(int direction){
-  selectedDay += direction;
-  int numdays = 30; //update to real time in future
+void drawStatsScreen() {
+  viewedYear = getYear();
+  viewedMonth = getMonth();
+  viewedMonthName = getMonthName();
 
-  if (selectedDay < 1) {
-    selectedDay= numdays;
-  }
+  selectedDay = getDay();
 
-  if (selectedDay > numdays) {
-    selectedDay = 1;
-  }
+  if (selectedDay < 1) selectedDay = 1;
+  if (selectedDay > 30) selectedDay = 30;
 
-  drawStatsScreen();
+  tft.fillScreen(ST77XX_BLACK);
+
+  drawDate();
+  drawDay();
+  drawCalendarUI();
+  drawSelectedDayInfo();
 }
 
-void drawDayDetailScreen(int day){
-  int weekdayIndex = (selectedDay - 1) % 7;
+void statsMoveDay(int direction) {
+  int oldDay = selectedDay;
+
+  selectedDay += direction;
+
+  if (selectedDay < 1) selectedDay = 30;
+  if (selectedDay > 30) selectedDay = 1;
+
+  drawDAYselectBOX(oldDay, false);
+  drawDAYselectBOX(selectedDay, true);
+}
+
+void drawDayDetailScreen(int day) {
+  int weekdayIndex = (day - 1) % 7;
+
   tft.fillScreen(ST77XX_BLACK);
+
   tft.setTextSize(2);
   tft.setTextColor(ST77XX_CYAN);
   tft.setCursor(15, 15);
   tft.println("Day Details");
+
   tft.setCursor(15, 40);
-  tft.print(weekdays[weekdayIndex]);
+  tft.print(statWeekdays[weekdayIndex]);
   tft.print(" ");
-  tft.print(selectedDay);
+  tft.print(day);
   tft.print("-");
-  tft.print(month);
+  tft.print(viewedMonth);
+  tft.print("-");
+  tft.print(viewedYear);
 
   const char* habits[] = {
-     "Gym",
+    "Gym",
     "Reading",
     "Piano",
     "Project"
   };
-  // Day
+
   int count = sizeof(habits) / sizeof(habits[0]);
   int txtlnspacing = 20;
-  String statusdone = "Done";
-  String statusfailed = "Failed";
-  for (int nohabit=0;nohabit<count;nohabit++){
+
+  for (int nohabit = 0; nohabit < count; nohabit++) {
     tft.setTextSize(2);
     tft.setTextColor(ST77XX_WHITE);
-    tft.setCursor(15, 80 + nohabit*txtlnspacing);
+    tft.setCursor(15, 80 + nohabit * txtlnspacing);
+
     tft.print(habits[nohabit]);
     tft.print(" : ");
-    if (nohabit % 2 == 0) {
-    tft.print(statusdone);
-  } else {
-    tft.print(statusfailed);
-}
+
+    String key = makeHabitKeyForDate(viewedYear, viewedMonth, day, nohabit);
+    bool isDone = prefs.getBool(key.c_str(), false);
+
+    if (isDone) {
+      tft.setTextColor(ST77XX_GREEN);
+      tft.print("Done");
+    } else {
+      tft.setTextColor(ST77XX_RED);
+      tft.print("Failed");
+    }
   }
 }
-  
+
+void drawDAYselectBOX(int day, bool selected) {
+  int col = (day - 1) % 7;
+  int row = (day - 1) / 7;
+
+  int x = startX + col * xspacing;
+  int y = startY + row * yspacing;
+
+  if (!selected) {
+    drawThickRect(x - 2, y - 2, squareSize + 4, squareSize + 4, ST77XX_BLACK, 3);
+  } else {
+    drawThickRect(x - 2, y - 2, squareSize + 4, squareSize + 4, ST77XX_CYAN, 3);
+    drawSelectedDayInfo();
+  }
+}
+
+void drawSelectedDayInfo() {
+  int weekdayIndex = (selectedDay - 1) % 7;
+
+  tft.fillRect(220, 10, 100, 45, ST77XX_BLACK);
+
+  tft.setTextSize(1);
+  tft.setTextColor(ST77XX_WHITE);
+
+  tft.setCursor(230, 15);
+  tft.println(statWeekdays[weekdayIndex]);
+
+  tft.setCursor(230, 30);
+  tft.print(selectedDay);
+  tft.print("-");
+  tft.print(viewedMonth);
+}
+
+void drawDate() {
+  tft.setTextSize(2);
+  tft.setTextColor(ST77XX_CYAN);
+  tft.setCursor(15, 15);
+  tft.print(viewedMonthName);
+  tft.print(" ");
+  tft.println(viewedYear);
+}
+
+void drawDay() {
+  tft.setTextSize(1);
+  tft.setTextColor(ST77XX_CYAN);
+  tft.setCursor(20, 55);
+  tft.println("Mon  Tue  Wed  Thu  Fri  Sat  Sun");
+}
+
+void drawCalendarUI() {
+  for (int day = 1; day <= 30; day++) {
+    int completedHabits = 0;
+
+    int col = (day - 1) % 7;
+    int row = (day - 1) / 7;
+
+    int x = startX + col * xspacing;
+    int y = startY + row * yspacing;
+
+    for (int habit = 0; habit < HABIT_COUNT; habit++) {
+      String key = makeHabitKeyForDate(viewedYear, viewedMonth, day, habit);
+      bool isDone = prefs.getBool(key.c_str(), false);
+
+      if (isDone) {
+        completedHabits++;
+      }
+    }
+
+    if (completedHabits == 0) {
+      tft.fillRect(x, y, squareSize, squareSize, ST77XX_RED);
+    } else if (completedHabits < HABIT_COUNT) {
+      tft.fillRect(x, y, squareSize, squareSize, ST77XX_YELLOW);
+    } else {
+      tft.fillRect(x, y, squareSize, squareSize, ST77XX_GREEN);
+    }
+
+    if (day == selectedDay) {
+      drawThickRect(x - 2, y - 2, squareSize + 4, squareSize + 4, ST77XX_CYAN, 3);
+    }
+  }
+}
+void drawThickRect(int x, int y, int w, int h, uint16_t color, int thickness) {
+  for (int i = 0; i < thickness; i++) {
+    tft.drawRect(x + i, y + i, w - 2 * i, h - 2 * i, color);
+  }
+}

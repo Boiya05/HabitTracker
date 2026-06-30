@@ -5,6 +5,7 @@
 
 #include "Config.h"
 #include "Display.h"
+#include "HomeScreen.h"
 
 Adafruit_ST7789 tft = Adafruit_ST7789(TFT_CS, TFT_DC, TFT_RST);
 
@@ -16,33 +17,43 @@ void setupDisplay() {
   tft.fillScreen(ST77XX_BLACK); //fills screen black
 }
 
-void drawMainMenu(int selectedItem, const char* menuItems[], int menuCount) {
+void drawMainMenuStatic() {
   tft.fillScreen(ST77XX_BLACK);
 
   tft.setTextSize(3);
   tft.setTextColor(ST77XX_CYAN);
-  tft.setCursor(20, 15);  //set position of text
+  tft.setCursor(20, 15);
   tft.println("Habit Box");
 
   tft.drawLine(0, 55, 320, 55, ST77XX_WHITE);
+}
+
+void drawMenuItem(int i, bool selected, const char* menuItems[]) {
+  int y = 80 + i * 35;
+
+  tft.fillRect(10, y - 5, 300, 28, ST77XX_BLACK);
 
   tft.setTextSize(2);
 
-  for (int i = 0; i < menuCount; i++) {
-    int y = 80 + i * 35;
+  if (selected) {
+    tft.fillRect(10, y - 5, 300, 28, ST77XX_BLUE);
+    tft.setTextColor(ST77XX_WHITE);
+    tft.setCursor(25, y);
+    tft.print("> ");
+    tft.println(menuItems[i]);
+  } else {
+    tft.setTextColor(ST77XX_WHITE);
+    tft.setCursor(25, y);
+    tft.print("  ");
+    tft.println(menuItems[i]);
+  }
+}
 
-    if (i == selectedItem) {
-      tft.fillRect(10, y - 5, 300, 28, ST77XX_BLUE);
-      tft.setTextColor(ST77XX_WHITE);
-      tft.setCursor(25, y);
-      tft.print("> ");
-      tft.println(menuItems[i]);
-    } else {
-      tft.setTextColor(ST77XX_WHITE);
-      tft.setCursor(25, y);
-      tft.print("  ");
-      tft.println(menuItems[i]);
-    }
+void drawMainMenu(int selectedItem, const char* menuItems[], int menuCount) {
+  drawMainMenuStatic();
+
+  for (int i = 0; i < menuCount; i++) {
+    drawMenuItem(i, i == selectedItem, menuItems);
   }
 }
 

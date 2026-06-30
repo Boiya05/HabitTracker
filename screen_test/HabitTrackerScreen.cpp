@@ -2,14 +2,14 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_ST7789.h>
 #include "HabitTrackerScreen.h"
+#include "Config.h"
 #include <Preferences.h>
+#include "TimeManager.h"
 
 Preferences prefs;
 
 // This uses the TFT object created in Display.cpp
 extern Adafruit_ST7789 tft;
-
-const int HABIT_COUNT = 4;
 
 const char* habits[HABIT_COUNT] = {
   "Gym",
@@ -27,13 +27,17 @@ bool habitDone[HABIT_COUNT] = {
 
 int selectedHabit = 0;
 
+
+String makeHabitKey(int habitIndex) {
+  return getDateKey() + "-h" + String(habitIndex);
+}
 void drawHabitTracker() {
   tft.fillScreen(ST77XX_BLACK);
-
+  int weekdayIndex = (getDay() - 1) % 7;
   tft.setTextSize(2);
   tft.setTextColor(ST77XX_CYAN);
   tft.setCursor(15, 15);
-  tft.println("Sun 21 Jun 2026");
+  tft.println(String(getWeekday()) + " " + String(getDay()) +" "+ String(getMonthName()) +" "+String(getYear()));
 
   tft.drawLine(0, 45, 320, 45, ST77XX_WHITE);
 
@@ -68,7 +72,7 @@ void drawHabitTracker() {
 void habitTrackerToggle() {
   habitDone[selectedHabit] = !habitDone[selectedHabit];
 
-  String key = "h" + String(selectedHabit);
+  String key = makeHabitKey(selectedHabit);
   prefs.putBool(key.c_str(), habitDone[selectedHabit]);
 
   drawHabitTracker();
@@ -78,7 +82,8 @@ void setupHabitStorage() {
   prefs.begin("habits", false);
 
   for (int i = 0; i < HABIT_COUNT; i++) {
-    String key = "h" + String(i);
+    String key = makeHabitKey(i);
+    Serial.println(key);
     habitDone[i] = prefs.getBool(key.c_str(), false);
   }
 }

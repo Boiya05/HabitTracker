@@ -2,9 +2,9 @@
 #define CONFIG_H
 
 // TFT pins
-#define TFT_CS   15
-#define TFT_DC   2
-#define TFT_RST  4
+#define TFT_CS   5
+#define TFT_DC   16
+#define TFT_RST  17
 
 // Rotary encoder pins
 #define ENC_CLK 25
@@ -14,5 +14,10 @@
 // Button pins
 #define BTN_BACK    32
 #define BTN_ACTION  33
+
+//Number of habits
+const int HABIT_COUNT = 4;
+
+
 
 #endif

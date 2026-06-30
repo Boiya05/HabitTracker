@@ -1,20 +1,20 @@
 #include "Config.h"
 #include "Input.h"
 #include "Display.h"
-#include "Config.h"
-#include "Input.h"
-#include "Display.h"
 #include "HabitTrackerScreen.h"
 #include "StatsScreen.h"
+#include "TimeManager.h"
+#include "HomeScreen.h"
 
 enum Screen {
+  HOME,
   MAIN_MENU,
   HABIT_TRACKER,
   STATS,
   DAY_DETAIL
 };
 
-Screen currentScreen = MAIN_MENU;
+Screen currentScreen = HOME;
 
 const char* menuItems[] = {
   "Habit Tracker",
@@ -30,32 +30,47 @@ bool inSubScreen = false;
 
 void setup() {
   Serial.begin(115200);
-
   setupInput();
   setupDisplay();
+
+  drawHomeScreen();
+
+  setupTime();
   setupHabitStorage();
 
-  drawMainMenu(selectedItem, menuItems, menuCount);}
+  drawHomeScreen();
+}
 
 void loop() {
 
   int move = getEncoderMove();
 
   switch(currentScreen) {
+  case HOME:
+    updateHomeScreen();
+
+    if (isActionPressed()) {
+      currentScreen = MAIN_MENU;
+      drawMainMenu(selectedItem, menuItems, menuCount);
+    }
+
+    break;
 
     case MAIN_MENU:
 
       if (move != 0) {
+    int oldItem = selectedItem;
 
-        selectedItem += move;
+    selectedItem += move;
 
-        if (selectedItem < 0)
-          selectedItem = menuCount - 1;
+    if (selectedItem < 0)
+        selectedItem = menuCount - 1;
 
-        if (selectedItem >= menuCount)
-          selectedItem = 0;
+    if (selectedItem >= menuCount)
+        selectedItem = 0;
 
-        drawMainMenu(selectedItem, menuItems, menuCount);
+    drawMenuItem(oldItem, false, menuItems);
+    drawMenuItem(selectedItem, true, menuItems);
       }
 
       if (isActionPressed()) {
@@ -80,6 +95,10 @@ void loop() {
             Serial.println("Settings");
             break;
         }
+      }
+      if (isBackPressed()) {
+        currentScreen = HOME;
+        drawHomeScreen();
       }
 
       break;
