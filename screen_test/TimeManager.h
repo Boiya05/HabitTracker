@@ -15,6 +15,9 @@ int getDay();
 int getMonth();
 int getYear();
 
+int getDaysInMonth();
+int getFirstWeekdayOfMonth();
+
 String getWeekday();
 String getMonthName();
 String getDateKey();

@@ -47,7 +47,7 @@ void drawStatsScreen() {
   selectedDay = getDay();
 
   if (selectedDay < 1) selectedDay = 1;
-  if (selectedDay > 30) selectedDay = 30;
+  if (selectedDay > getDaysInMonth()) selectedDay = getDaysInMonth();
 
   tft.fillScreen(ST77XX_BLACK);
 
@@ -62,8 +62,9 @@ void statsMoveDay(int direction) {
 
   selectedDay += direction;
 
-  if (selectedDay < 1) selectedDay = 30;
-  if (selectedDay > 30) selectedDay = 1;
+  int daysInMonth = getDaysInMonth();
+  if (selectedDay < 1)              selectedDay = daysInMonth;
+  if (selectedDay > daysInMonth)    selectedDay = 1;
 
   drawDAYselectBOX(oldDay, false);
   drawDAYselectBOX(selectedDay, true);
@@ -161,38 +162,40 @@ void drawDate() {
 }
 
 void drawDay() {
+  const char* days[] = {"Mon","Tue","Wed","Thu","Fri","Sat","Sun"};
   tft.setTextSize(1);
   tft.setTextColor(ST77XX_CYAN);
-  tft.setCursor(20, 55);
-  tft.println("Mon  Tue  Wed  Thu  Fri  Sat  Sun");
-}
 
+  for (int i = 0; i < 7; i++) {
+    // at textSize=1, each char is 6px — "Mon" = 18px wide = same as squareSize
+    // so startX + i*xspacing left-aligns the label perfectly with the square
+    tft.setCursor(startX + i * xspacing, 55);
+    tft.print(days[i]);
+  }
+}
 void drawCalendarUI() {
-  for (int day = 1; day <= 30; day++) {
+  int daysInMonth  = getDaysInMonth();
+  int firstWeekday = getFirstWeekdayOfMonth(); // Mon=0
+
+  for (int day = 1; day <= daysInMonth; day++) {  // was <= 30
     int completedHabits = 0;
 
-    int col = (day - 1) % 7;
-    int row = (day - 1) / 7;
+    // ---- FIX: offset by where the 1st actually lands ----
+    int col = (firstWeekday + (day - 1)) % 7;
+    int row = (firstWeekday + (day - 1)) / 7;
+    // -----------------------------------------------------
 
     int x = startX + col * xspacing;
     int y = startY + row * yspacing;
 
     for (int habit = 0; habit < HABIT_COUNT; habit++) {
       String key = makeHabitKeyForDate(viewedYear, viewedMonth, day, habit);
-      bool isDone = prefs.getBool(key.c_str(), false);
-
-      if (isDone) {
-        completedHabits++;
-      }
+      if (prefs.getBool(key.c_str(), false)) completedHabits++;
     }
 
-    if (completedHabits == 0) {
-      tft.fillRect(x, y, squareSize, squareSize, ST77XX_RED);
-    } else if (completedHabits < HABIT_COUNT) {
-      tft.fillRect(x, y, squareSize, squareSize, ST77XX_YELLOW);
-    } else {
-      tft.fillRect(x, y, squareSize, squareSize, ST77XX_GREEN);
-    }
+    if      (completedHabits == 0)          tft.fillRect(x, y, squareSize, squareSize, ST77XX_RED);
+    else if (completedHabits < HABIT_COUNT) tft.fillRect(x, y, squareSize, squareSize, ST77XX_YELLOW);
+    else                                    tft.filltRect(x, y, squareSize, squareSize, ST77XX_GREEN);
 
     if (day == selectedDay) {
       drawThickRect(x - 2, y - 2, squareSize + 4, squareSize + 4, ST77XX_CYAN, 3);

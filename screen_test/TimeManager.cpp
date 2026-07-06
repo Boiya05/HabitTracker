@@ -117,3 +117,27 @@ String getMonthName() {
 
     return months[timeInfo.tm_mon];
 }
+
+int getDaysInMonth() {
+  int month = timeInfo.tm_mon + 1;
+  int year  = timeInfo.tm_year + 1900;
+
+  if (month == 2) {
+    bool leap = (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
+    return leap ? 29 : 28;
+  }
+
+  if (month == 4 || month == 6 || month == 9 || month == 11) return 30;
+
+  return 31;
+}
+
+int getFirstWeekdayOfMonth() {
+  int todayWday = timeInfo.tm_wday;   // Sun=0
+  int todayDay  = timeInfo.tm_mday;
+
+  int firstWday = ((todayWday - (todayDay - 1)) % 7 + 7) % 7;
+
+  // convert Sun=0 system → Mon=0 system
+  return (firstWday + 6) % 7;
+}
