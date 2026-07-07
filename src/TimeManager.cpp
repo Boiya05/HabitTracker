@@ -7,13 +7,30 @@ const char* password = "0162735254";
 
 // ===== NTP =====
 const char* ntpServer = "pool.ntp.org";
-const long gmtOffset_sec = 8 * 3600;   // Malaysia
+static long gmtOffsetSec = 8 * 3600; // default: Malaysia (UTC+8), overridden by Settings
 const int daylightOffset_sec = 0;
 
 // Stores current time
 struct tm timeInfo;
 String getDateKey() {
   return String(getYear()) + "-" + String(getMonth()) + "-" + String(getDay());
+}
+
+void setUtcOffsetHours(int hours) {
+  if (hours < -12) hours = -12;
+  if (hours > 14) hours = 14;
+  gmtOffsetSec = (long)hours * 3600;
+}
+
+int getUtcOffsetHours() {
+  return (int)(gmtOffsetSec / 3600);
+}
+
+// Re-applies the current offset to the already-synced clock, without waiting
+// on a fresh WiFi/NTP round trip — used when leaving Settings so a time zone
+// change is reflected immediately instead of needing a reboot.
+void applyUtcOffset() {
+  configTime(gmtOffsetSec, daylightOffset_sec, "my.pool.ntp.org", "asia.pool.ntp.org", ntpServer);
 }
 
 void setupTime() {
@@ -24,7 +41,7 @@ void setupTime() {
   unsigned long wifiStart = millis();
 
   while (WiFi.status() != WL_CONNECTED && millis() - wifiStart < 15000) {
-    delay(500);
+    delay(200);
     Serial.print(".");
   }
 
@@ -35,23 +52,23 @@ void setupTime() {
 
   Serial.println("\nWiFi connected");
 
-  configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+  // Country-level pool first (closest/fastest servers), falling back to
+  // continent- and global-level pools if it doesn't respond.
+  applyUtcOffset();
 
-  Serial.print("Syncing NTP");
+  Serial.println("Syncing NTP");
 
-  unsigned long ntpStart = millis();
-
-  while (!getLocalTime(&timeInfo) && millis() - ntpStart < 10000) {
-    delay(500);
-    Serial.print(".");
-  }
-
-  if (!getLocalTime(&timeInfo)) {
-    Serial.println("\nNTP failed");
+  // getLocalTime() already polls internally every 10ms up to its own timeout —
+  // the old code wrapped it in an outer retry loop with delay(500), which on
+  // every failed attempt paid that internal timeout AND the extra 500ms AND
+  // started over, nearly doubling the worst-case wait. One call with the
+  // full time budget does the same job without the redundant layer.
+  if (!getLocalTime(&timeInfo, 10000)) {
+    Serial.println("NTP failed");
     return;
   }
 
-  Serial.println("\nTime synced!");
+  Serial.println("Time synced!");
   Serial.println(&timeInfo, "%A, %B %d %Y %H:%M:%S");
 }
 
@@ -99,6 +116,10 @@ String getWeekday() {
 }
 
 String getMonthName() {
+    return getMonthNameFor(timeInfo.tm_mon + 1);
+}
+
+String getMonthNameFor(int month) {
 
     const char* months[] = {
         "January",
@@ -115,13 +136,10 @@ String getMonthName() {
         "December"
     };
 
-    return months[timeInfo.tm_mon];
+    return months[month - 1];
 }
 
-int getDaysInMonth() {
-  int month = timeInfo.tm_mon + 1;
-  int year  = timeInfo.tm_year + 1900;
-
+int getDaysInMonth(int year, int month) {
   if (month == 2) {
     bool leap = (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
     return leap ? 29 : 28;
@@ -132,12 +150,22 @@ int getDaysInMonth() {
   return 31;
 }
 
-int getFirstWeekdayOfMonth() {
-  int todayWday = timeInfo.tm_wday;   // Sun=0
-  int todayDay  = timeInfo.tm_mday;
+// Zeller's congruence: weekday of the 1st of (year, month), returned Mon=0..Sun=6.
+// Works for any year/month, unlike deriving it from the live clock struct.
+int getFirstWeekdayOfMonth(int year, int month) {
+  int m = month;
+  int y = year;
 
-  int firstWday = ((todayWday - (todayDay - 1)) % 7 + 7) % 7;
+  if (m < 3) {
+    m += 12;
+    y -= 1;
+  }
 
-  // convert Sun=0 system → Mon=0 system
-  return (firstWday + 6) % 7;
+  int K = y % 100;
+  int J = y / 100;
+
+  // h: 0=Saturday, 1=Sunday, 2=Monday, ... 6=Friday
+  int h = (1 + (13 * (m + 1)) / 5 + K + K / 4 + J / 4 + 5 * J) % 7;
+
+  return (h + 5) % 7; // convert to Mon=0..Sun=6
 }

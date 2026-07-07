@@ -9,6 +9,7 @@
 extern Adafruit_ST7789 tft;
 
 int lastSecond = -1;
+int lastDay = -1;
 
 String twoDigits(int value) {
   if (value < 10) {
@@ -33,6 +34,7 @@ void drawHomeScreen() {
   tft.print("Press ACTION");
 
   lastSecond = -1;
+  lastDay = -1;
   updateHomeScreen();
 }
 
@@ -41,35 +43,41 @@ void updateHomeScreen() {
 
   int currentSecond = getSecond();
 
-  if (currentSecond == lastSecond) {
-    return;
+  if (currentSecond != lastSecond) {
+    lastSecond = currentSecond;
+
+    String timeText =
+      twoDigits(getHour()) + ":" +
+      twoDigits(getMinute()) + ":" +
+      twoDigits(getSecond());
+
+    // Clear only the tight box the time text occupies, not the whole row —
+    // a full-row clear every second is what caused the visible flicker.
+    tft.fillRect(55, 70, 200, 34, ST77XX_BLACK);
+
+    tft.setTextColor(ST77XX_GREEN);
+    tft.setTextSize(4);
+    tft.setCursor(55, 70);
+    tft.print(timeText);
   }
 
-  lastSecond = currentSecond;
+  int currentDay = getDay();
 
-  String timeText =
-    twoDigits(getHour()) + ":" +
-    twoDigits(getMinute()) + ":" +
-    twoDigits(getSecond());
+  if (currentDay != lastDay) {
+    lastDay = currentDay;
 
-  String dateText =
-    getWeekday() + ", " +
-    String(getDay()) + " " +
-    getMonthName() + " " +
-    String(getYear());
+    String dateText =
+      getWeekday() + ", " +
+      String(getDay()) + " " +
+      getMonthName() + " " +
+      String(getYear());
 
-  // Clear only time/date area
-  tft.fillRect(0, 70, 320, 80, ST77XX_BLACK);
+    // Only redraw the date when the day actually changes, instead of every second.
+    tft.fillRect(0, 125, 320, 20, ST77XX_BLACK);
 
-  // Draw time
-  tft.setTextColor(ST77XX_GREEN);
-  tft.setTextSize(4);
-  tft.setCursor(55, 70);
-  tft.print(timeText);
-
-  // Draw date
-  tft.setTextColor(ST77XX_WHITE);
-  tft.setTextSize(2);
-  tft.setCursor(25, 125);
-  tft.print(dateText);
+    tft.setTextColor(ST77XX_WHITE);
+    tft.setTextSize(2);
+    tft.setCursor(25, 125);
+    tft.print(dateText);
+  }
 }

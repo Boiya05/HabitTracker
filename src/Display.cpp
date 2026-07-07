@@ -9,12 +9,31 @@
 
 Adafruit_ST7789 tft = Adafruit_ST7789(TFT_CS, TFT_DC, TFT_RST);
 
+static const int BACKLIGHT_CHANNEL = 1; // LEDC channel 0 is used by AudioManager's speaker
+static int backlightPercent = 100;
 
 void setupDisplay() {
   tft.init(240, 320); // set resolution
   tft.invertDisplay(false);
   tft.setRotation(1); // set rotation
   tft.fillScreen(ST77XX_BLACK); //fills screen black
+
+  ledcSetup(BACKLIGHT_CHANNEL, 5000, 8);
+  ledcAttachPin(TFT_BL, BACKLIGHT_CHANNEL);
+  setBacklightPercent(backlightPercent);
+}
+
+void setBacklightPercent(int percent) {
+  if (percent < 5) percent = 5;     // never let the screen go fully dark/unreadable
+  if (percent > 100) percent = 100;
+  backlightPercent = percent;
+
+  uint32_t duty = (uint32_t)((long)255 * backlightPercent / 100);
+  ledcWrite(BACKLIGHT_CHANNEL, duty);
+}
+
+int getBacklightPercent() {
+  return backlightPercent;
 }
 
 void drawMainMenuStatic() {

@@ -11,7 +11,7 @@ Preferences prefs;
 // This uses the TFT object created in Display.cpp
 extern Adafruit_ST7789 tft;
 
-const char* habits[HABIT_COUNT] = {
+const char* habitNames[HABIT_COUNT] = {
   "Gym",
   "Reading",
   "Piano",
@@ -64,7 +64,7 @@ void drawHabitTracker() {
       tft.print("[ ] ");
     }
 
-    tft.println(habits[i]);
+    tft.println(habitNames[i]);
   }
 }
 

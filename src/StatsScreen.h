@@ -4,6 +4,8 @@
 #include <Arduino.h>
 
 void drawStatsScreen();
+void drawStatsScreenForMonth(int year, int month);
+void redrawStatsScreen();
 void drawDate();
 void drawDay();
 void drawCalendarUI();

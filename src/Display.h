@@ -7,4 +7,7 @@ void drawMainMenu(int selectedItem, const char* menuItems[], int menuCount);
 void drawSelectedScreen(const char* title);
 void drawMainMenuStatic();
 
+void setBacklightPercent(int percent);
+int getBacklightPercent();
+
 #endif

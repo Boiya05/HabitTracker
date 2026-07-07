@@ -40,15 +40,31 @@ int getSelectedDay() {
 }
 
 void drawStatsScreen() {
-  viewedYear = getYear();
-  viewedMonth = getMonth();
-  viewedMonthName = getMonthName();
+  drawStatsScreenForMonth(getYear(), getMonth());
+}
 
-  selectedDay = getDay();
+void drawStatsScreenForMonth(int year, int month) {
+  viewedYear = year;
+  viewedMonth = month;
+  viewedMonthName = getMonthNameFor(month);
 
+  // Default to today's day if we're viewing the current month, otherwise start at day 1.
+  if (year == getYear() && month == getMonth()) {
+    selectedDay = getDay();
+  } else {
+    selectedDay = 1;
+  }
+
+  int daysInMonth = getDaysInMonth(viewedYear, viewedMonth);
   if (selectedDay < 1) selectedDay = 1;
-  if (selectedDay > getDaysInMonth()) selectedDay = getDaysInMonth();
+  if (selectedDay > daysInMonth) selectedDay = daysInMonth;
 
+  redrawStatsScreen();
+}
+
+// Re-entry (e.g. backing out of the day-detail screen): keep the current viewed
+// month/year and selected day instead of resetting to today.
+void redrawStatsScreen() {
   tft.fillScreen(ST77XX_BLACK);
 
   drawDate();
@@ -62,7 +78,7 @@ void statsMoveDay(int direction) {
 
   selectedDay += direction;
 
-  int daysInMonth = getDaysInMonth();
+  int daysInMonth = getDaysInMonth(viewedYear, viewedMonth);
   if (selectedDay < 1)              selectedDay = daysInMonth;
   if (selectedDay > daysInMonth)    selectedDay = 1;
 
@@ -71,7 +87,7 @@ void statsMoveDay(int direction) {
 }
 
 void drawDayDetailScreen(int day) {
-  int firstWeekday = getFirstWeekdayOfMonth();
+  int firstWeekday = getFirstWeekdayOfMonth(viewedYear, viewedMonth);
   int weekdayIndex = (firstWeekday + day - 1) % 7;
 
   tft.fillScreen(ST77XX_BLACK);
@@ -90,22 +106,14 @@ void drawDayDetailScreen(int day) {
   tft.print("-");
   tft.print(viewedYear);
 
-  const char* habits[] = {
-    "Gym",
-    "Reading",
-    "Piano",
-    "Project"
-  };
-
-  int count = sizeof(habits) / sizeof(habits[0]);
   int txtlnspacing = 20;
 
-  for (int nohabit = 0; nohabit < count; nohabit++) {
+  for (int nohabit = 0; nohabit < HABIT_COUNT; nohabit++) {
     tft.setTextSize(2);
     tft.setTextColor(ST77XX_WHITE);
     tft.setCursor(15, 80 + nohabit * txtlnspacing);
 
-    tft.print(habits[nohabit]);
+    tft.print(habitNames[nohabit]);
     tft.print(" : ");
 
     String key = makeHabitKeyForDate(viewedYear, viewedMonth, day, nohabit);
@@ -122,8 +130,9 @@ void drawDayDetailScreen(int day) {
 }
 
 void drawDAYselectBOX(int day, bool selected) {
-  int col = (day - 1) % 7;
-  int row = (day - 1) / 7;
+  int firstWeekday = getFirstWeekdayOfMonth(viewedYear, viewedMonth);
+  int col = (firstWeekday + (day - 1)) % 7;
+  int row = (firstWeekday + (day - 1)) / 7;
 
   int x = startX + col * xspacing;
   int y = startY + row * yspacing;
@@ -137,7 +146,7 @@ void drawDAYselectBOX(int day, bool selected) {
 }
 
 void drawSelectedDayInfo() {
-  int firstWeekday = getFirstWeekdayOfMonth();
+  int firstWeekday = getFirstWeekdayOfMonth(viewedYear, viewedMonth);
   int weekdayIndex = (firstWeekday + selectedDay - 1) % 7;
 
   tft.fillRect(220, 10, 100, 45, ST77XX_BLACK);
@@ -176,8 +185,8 @@ void drawDay() {
   }
 }
 void drawCalendarUI() {
-  int daysInMonth  = getDaysInMonth();
-  int firstWeekday = getFirstWeekdayOfMonth(); // Mon=0
+  int daysInMonth  = getDaysInMonth(viewedYear, viewedMonth);
+  int firstWeekday = getFirstWeekdayOfMonth(viewedYear, viewedMonth); // Mon=0
 
   for (int day = 1; day <= daysInMonth; day++) {  // was <= 30
     int completedHabits = 0;
